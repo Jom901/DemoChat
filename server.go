@@ -52,13 +52,33 @@ func handleConnection(conn net.Conn, connectionMap *map[net.Conn]string) {
 			userName = message
 			_, err = conn.Write([]byte(fmt.Sprintf("Welcome to the chat, %s !\n", userName)))
 			(*connectionMap)[conn] = userName
+			sendMessageToAllOtherConnections(conn, connectionMap, fmt.Sprintf("%s has joined the chat!\n", userName))
+			userList := listConnectedUsers(connectionMap, conn)
+			conn.Write([]byte(userList))
 		} else {
 			fmt.Printf("%s: %s\n", userName, message)
 			sendMessageToAllOtherConnections(conn, connectionMap, fmt.Sprintf("%s: %s\n", userName, message))
 		}
 	}
 }
-
+func listConnectedUsers(connMap *map[net.Conn]string, threadConn net.Conn) string {
+	list := []string{}
+	for userConn, userName := range *connMap {
+		if threadConn != userConn {
+			list = append(list, userName)
+		}
+	}
+	if len(list) >= 3 {
+		leadUp := strings.Join(list[:len(list)-1], ",")
+		return fmt.Sprintf("%s and %s are chatting up a storm.\n", leadUp, list[len(list)-1])
+	} else if len(list) == 2 {
+		return fmt.Sprintf("%s and %s are in the chat vibing.\n", list[0], list[1])
+	} else if len(list) == 1 {
+		return fmt.Sprintf("%s is in the chat relaxing.\n", strings.Join(list, ""))
+	} else {
+		return "No other users are currently lounging.\n"
+	}
+}
 func sendMessageToAllOtherConnections(conn net.Conn, connMap *map[net.Conn]string, message string) {
 	for otherConn, _ := range *connMap {
 		if otherConn != conn {
